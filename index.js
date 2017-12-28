@@ -1,19 +1,35 @@
-const peg = require('pegjs')
 const _ = require('lodash')
+const peg = require('pegjs')
 const fs = require('fs')
+const path = require('path')
 const through2 = require('through2')
+
+const ROOT_LOGS_DIR = 'logs'
 
 const grammar = fs.readFileSync('./syntax.pegjs', { encoding: 'utf8' })
 const parser = peg.generate(grammar)
 
+try {
+  fs.accessSync(
+    path.join(__dirname, ROOT_LOGS_DIR),
+    fs.constants.R_OK | fs.constants.X_OK
+  )
+} catch (e) {
+  console.error('Cannot read logs directory')
+  process.exit(-1)
+  return
+}
+
 const dirs = fs
-  .readdirSync(__dirname)
-  .filter(item => /^i-\w+$/.test(item) && fs.statSync(item).isDirectory())
+  .readdirSync(path.join(__dirname, ROOT_LOGS_DIR))
+  .filter(item =>
+    fs.statSync(path.join(__dirname, ROOT_LOGS_DIR, item)).isDirectory()
+  )
 const logs = _.flatten(
   dirs.map(logDir =>
     fs
-      .readdirSync(`${__dirname}/${logDir}`)
-      .map(item => `${__dirname}/${logDir}/${item}`)
+      .readdirSync(path.join(__dirname, ROOT_LOGS_DIR, logDir))
+      .map(item => path.join(__dirname, ROOT_LOGS_DIR, logDir, item))
   )
 )
 logs.forEach(item => {
