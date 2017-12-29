@@ -1,9 +1,9 @@
 Line = Access / ReferralCorner / Localhost / Invalid
 
 Access =
-  timestamp:Timestamp _
+  timestamp1:Timestamp _
   caller:IPList _
-  NginxTimeStamp _
+  timestamp2:NginxTimeStamp _
   host:Host _
   request:Request _
   statusCode:Number _
@@ -13,7 +13,11 @@ Access =
 {
   return {
   type: 'access',
-  timestamp,
+  timestamp: Date.parse(timestamp1),
+  time: {
+    t1: timestamp1,
+    t2: timestamp2
+  },
   caller,
   host,
   request,
@@ -25,9 +29,9 @@ Access =
 }
 
 ReferralCorner =
-  timestamp:Timestamp _
+  timestamp1:Timestamp _
   caller:IPList _
-  NginxTimeStamp _
+  timestamp2:NginxTimeStamp _
   "referral_corner" _
   request:Request _
   statusCode:Number _
@@ -37,7 +41,11 @@ ReferralCorner =
 {
   return {
   type: 'referral_corner',
-  timestamp,
+  timestamp: Date.parse(timestamp1),
+  time: {
+    t1: timestamp1,
+    t2: timestamp2
+  },
   caller,
   request,
   statusCode,
@@ -48,9 +56,9 @@ ReferralCorner =
 }
 
 Localhost =
-  timestamp:Timestamp _
+  timestamp1:Timestamp _
   caller:IPList _
-  NginxTimeStamp _
+  timestamp2:NginxTimeStamp _
   "localhost" _
   request:Request _
   statusCode:Number _
@@ -60,7 +68,11 @@ Localhost =
 {
   return {
   type: 'localhost',
-  timestamp,
+  timestamp: Date.parse(timestamp1),
+  time: {
+    t1: timestamp1,
+    t2: timestamp2
+  },
   caller,
   request,
   statusCode,
@@ -71,9 +83,9 @@ Localhost =
 }
 
 Invalid =
-  timestamp:Timestamp _
+  timestamp1:Timestamp _
   caller:IPList _
-  NginxTimeStamp _
+  timestamp2:NginxTimeStamp _
   InvalidHost _
   request:Request _
   statusCode:Number _
@@ -83,7 +95,11 @@ Invalid =
 {
   return {
   type: 'invalid',
-  timestamp,
+  timestamp: Date.parse(timestamp1),
+  time: {
+    t1: timestamp1,
+    t2: timestamp2
+  },
   caller,
   request,
   statusCode,
@@ -125,12 +141,12 @@ IPv6 = ip:(Hex ":" _IPv6Part Hex?) { return ip.join(''); }
 _IPv6Part = part:_IPv6Fragment+ { return part.join(''); }
 _IPv6Fragment = fragment:(Hex? ":") { return fragment.join(''); }
 
-NginxTimeStamp = timestamp:("[" date:NginxDate ":" time:NginxTime " " NginxTimeZone "]") { return timestamp.join(""); }
+NginxTimeStamp = "[" timestamp:(NginxDate ":" NginxTime " " NginxTimeZone) "]" { return timestamp.join(""); }
 NginxTimeZone = timezone:("+" Number) { return timezone.join(""); }
 NginxTime = time:(Number ":" Number ":" Number) { return time.join("") }
 NginxDate = date:(Number "/" Character "/" Number) { return date.join("") }
 
-Timestamp = date:Date time:Time { return Date.parse(date.concat(time).join('')); }
+Timestamp = date:Date time:Time { return date.concat(time).join(''); }
 Date = Number "-" Number "-" Number
 Time = "T" Number ":" Number ":" Number "." Number "Z"
 
@@ -144,4 +160,5 @@ Hex = hex:[0-9a-fA-F]+ { return hex.join(''); }
 Character = character:[a-zA-Z]+ { return character.join(''); }
 Number = digits:[0-9]+ { return digits.join(''); }
 _ = [ \t\n]*
+
 
