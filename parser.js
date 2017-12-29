@@ -31,6 +31,9 @@ module.exports = function parse(file) {
           this.push(JSON.stringify(parser.parse(decodedLine)))
           callback()
         } catch (error) {
+          console.error(file)
+          console.error(decodedLine)
+          console.error(error.message)
           callback(error)
         }
       })

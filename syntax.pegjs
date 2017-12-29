@@ -86,7 +86,7 @@ Invalid =
   timestamp1:Timestamp _
   caller:IPList _
   timestamp2:NginxTimeStamp _
-  InvalidHost _
+  host:InvalidHost _
   request:Request _
   statusCode:Number _
   size:Number _
@@ -95,6 +95,7 @@ Invalid =
 {
   return {
   type: 'invalid',
+  host,
   timestamp: Date.parse(timestamp1),
   time: {
     t1: timestamp1,
@@ -109,35 +110,47 @@ Invalid =
   }
 }
 
-Request = ForwardRequest / HTTPRequest / HexRequest
-HexRequest = "\"" path:_HexRequestPath+ "\"" { return { type: 'hex', path: path.join('') } }
-_HexRequestPath = EncodedHex / Text / [ ^`]
-
+Request = EmptyRequest / EmptyHTTPRequest / HTTPRequest / ForwardRequest / HexRequest / OtherRequest
+OtherRequest = "\"" path:Text "\"" { return { type: 'invalid', path } }
+HexRequest = "\"" path:TextWithoutSpace "\"" { return { type: 'hex', path } }
 ForwardRequest = "\"" "X-Forwarded-For:" _ ip:IP "\"" { return { type: 'forwarded', ip }; }
-HTTPRequest = "\"" method:Character _ pathname:Text _ version:HTTP_VERSION "\""
+HTTPRequest = "\"" method:Character _ pathname:TextWithoutSpace _ version:HTTP_VERSION "\""
 {
   return { type: 'http', method, pathname, version }
 }
 HTTP_VERSION = "HTTP/1.1"
   / "HTTP/1.0"
   / "HTTP/2.0"
+EmptyHTTPRequest = "\"" method:Character _ version:HTTP_VERSION "\""
+{
+  return { type: 'http', method, pathname: '', version }
+}
+EmptyRequest = "\"\""
 
 Quote = "\"" quote:Text? "\"" { return quote; }
 
-InvalidHost = "-c"
+WaitDelayHost = "1 waitfor delay '0"
+LookupHost = "'" lookup:[a-zA-Z0-9& |]+ "'" { return lookup.join('') }
+TargetQueryHost = "target" "(" data:[a-zA-Z0-9_.\- @{}$]+ ")" { return `target(${data.join('')})` }
+InvalidHost = WaitDelayHost / TargetQueryHost / LookupHost / invalid:([.0-9a-zA-Z\-()*]+) { return invalid.join(''); }
 Host = HostName / IP
 HostName = host:(_FQDNPart+ Word) { return host.join(''); }
 _FQDNPart = part:(_FQDNFragment+) { return part.join(''); }
 _FQDNFragment = fragment:(Word+ ".") { return fragment.join(''); }
 
-IPList = ip:(RequestIP)+ balancer:LoadBalancerIP { return { ip, balancer }; }
+IPList = ","? _ ip:(RequestIP)+ balancer:LoadBalancerIP { return { ip, balancer }; }
 RequestIP = ip:CallerIP ","? _ { return ip; }
 LoadBalancerIP = "(" ip: IP ")" { return ip; }
 CallerIP = Unknown / IP / HostName / NoValue
-IP = IPv4 / IPv6
+IP = IPv64 / InvalidIPv4 / IPv4 / IPv6
+
+IPv64 = ip:(_IPv6Part _IPv64End) { return ip.join(''); }
+_IPv64End = IPv4 / Hex
+
+InvalidIPv4 = invalid:(IPv4 ".") { return invalid.join('') }
 IPv4 = ip:(Number "." Number "." Number "." Number) { return ip.join(''); }
 
-IPv6 = ip:(Hex ":" _IPv6Part Hex?) { return ip.join(''); }
+IPv6 = ip:(_IPv6Part Hex?) { return ip.join(''); }
 _IPv6Part = part:_IPv6Fragment+ { return part.join(''); }
 _IPv6Fragment = fragment:(Hex? ":") { return fragment.join(''); }
 
@@ -154,11 +167,10 @@ NoValue =  "-"
 Unknown = "unknown"
 
 EncodedHex = encodedHex:("\\x" Hex) { return encodedHex.join(''); }
-Text = text:[;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=.\()\-,$~ {}<>]+ { return text.join(''); }
-Word = word:[0-9a-zA-Z_-]+ { return word.join(''); }
+TextWithoutSpace = text:[`;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=.\()\-,$~{}<>]+ { return text.join(''); }
+Text = text:[`;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=.\()\-,$~ {}<>]+ { return text.join(''); }
+Word = word:[*0-9a-zA-Z_-]+ { return word.join(''); }
 Hex = hex:[0-9a-fA-F]+ { return hex.join(''); }
 Character = character:[a-zA-Z]+ { return character.join(''); }
 Number = digits:[0-9]+ { return digits.join(''); }
 _ = [ \t\n]*
-
-
