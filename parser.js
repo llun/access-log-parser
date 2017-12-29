@@ -28,14 +28,29 @@ module.exports = function parse(file) {
       through2(function(line, enc, callback) {
         const decodedLine = line.toString()
         try {
-          this.push(JSON.stringify(parser.parse(decodedLine)))
-          callback()
+          this.push(
+            JSON.stringify(
+              Object.assign({}, parser.parse(decodedLine), {
+                valid: true,
+                raw: decodedLine
+              })
+            )
+          )
         } catch (error) {
-          console.error(file)
-          console.error(decodedLine)
-          console.error(error.message)
-          callback(error)
+          const timestamp = decodedLine.split(' ')[0]
+          const output = {
+            valid: false,
+            raw: decodedLine,
+            file,
+            timestamp: Date.parse(timestamp),
+            time: {
+              t1: timestamp
+            }
+          }
+          console.log(output)
+          this.push(JSON.stringify(output))
         }
+        callback()
       })
     )
 }

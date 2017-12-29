@@ -1,18 +1,23 @@
-Line = Access / ReferralCorner / Localhost / Invalid
-
-Access =
+AccessLog =
   timestamp1:Timestamp _
   caller:IPList _
   timestamp2:NginxTimeStamp _
-  host:Host _
+  host:Text _
   request:Request _
   statusCode:Number _
   size:Number _
   referrer: Quote _
   userAgent: Quote _
 {
+  host = host.trim()
+
+  let type = 'access'
+  if (host.value === 'referral_corner') type = 'referral_corner'
+  else if (host.value === 'localhost') type = 'localhost'
+  else if (host.type === 'text') type = 'invalid'
+
   return {
-  type: 'access',
+  type,
   timestamp: Date.parse(timestamp1),
   time: {
     t1: timestamp1,
@@ -20,88 +25,6 @@ Access =
   },
   caller,
   host,
-  request,
-  statusCode,
-  size,
-  referrer,
-  userAgent
-  }
-}
-
-ReferralCorner =
-  timestamp1:Timestamp _
-  caller:IPList _
-  timestamp2:NginxTimeStamp _
-  "referral_corner" _
-  request:Request _
-  statusCode:Number _
-  size:Number _
-  referrer:Quote _
-  userAgent:Quote _
-{
-  return {
-  type: 'referral_corner',
-  timestamp: Date.parse(timestamp1),
-  time: {
-    t1: timestamp1,
-    t2: timestamp2
-  },
-  caller,
-  request,
-  statusCode,
-  size,
-  referrer,
-  userAgent
-  }
-}
-
-Localhost =
-  timestamp1:Timestamp _
-  caller:IPList _
-  timestamp2:NginxTimeStamp _
-  "localhost" _
-  request:Request _
-  statusCode:Number _
-  size:Number _
-  referrer:Quote _
-  userAgent:Quote _
-{
-  return {
-  type: 'localhost',
-  timestamp: Date.parse(timestamp1),
-  time: {
-    t1: timestamp1,
-    t2: timestamp2
-  },
-  caller,
-  request,
-  statusCode,
-  size,
-  referrer,
-  userAgent
-  }
-}
-
-Invalid =
-  timestamp1:Timestamp _
-  caller:IPList _
-  timestamp2:NginxTimeStamp _
-  host:InvalidHost _
-  request:Request _
-  statusCode:Number _
-  size:Number _
-  referrer:Quote _
-  userAgent:Quote _
-{
-  return {
-  type: 'invalid',
-  host,
-  timestamp: Date.parse(timestamp1),
-  time: {
-    t1: timestamp1,
-    t2: timestamp2
-  },
-  caller,
   request,
   statusCode,
   size,
@@ -129,48 +52,45 @@ EmptyRequest = "\"\""
 
 Quote = "\"" quote:Text? "\"" { return quote; }
 
-WaitDelayHost = "1 waitfor delay '0"
-LookupHost = "'" lookup:[a-zA-Z0-9& |]+ "'" { return lookup.join('') }
-TargetQueryHost = "target" "(" data:[a-zA-Z0-9_.\- @{}$]+ ")" { return `target(${data.join('')})` }
-InvalidHost = WaitDelayHost / TargetQueryHost / LookupHost / invalid:([.0-9a-zA-Z\-()*]+) { return invalid.join(''); }
-Host = HostName / IP
-HostName = host:(_FQDNPart+ Word) { return host.join(''); }
-_FQDNPart = part:(_FQDNFragment+) { return part.join(''); }
-_FQDNFragment = fragment:(Word+ ".") { return fragment.join(''); }
+HostName = $(_FQDNPart+ Word)
+_FQDNPart = $(_FQDNFragment+)
+_FQDNFragment = $(Word+ ".")
 
 IPList = ","? _ ip:(RequestIP)+ balancer:LoadBalancerIP { return { ip, balancer }; }
 RequestIP = ip:CallerIP ","? _ { return ip; }
 LoadBalancerIP = "(" ip: IP ")" { return ip; }
-CallerIP = Unknown / IP / HostName / NoValue
+CallerIP = IP / HostName / Unknown / NoValue
 IP = IPv64 / InvalidIPv4 / IPv4 / IPv6
 
-IPv64 = ip:(_IPv6Part _IPv64End) { return ip.join(''); }
+IPv64 = $(_IPv6Part _IPv64End)
 _IPv64End = IPv4 / Hex
 
-InvalidIPv4 = invalid:(IPv4 ".") { return invalid.join('') }
-IPv4 = ip:(Number "." Number "." Number "." Number) { return ip.join(''); }
+InvalidIPv4 = $(IPv4 ".")
+IPv4 = $(Number "." Number "." Number "." Number)
 
-IPv6 = ip:(_IPv6Part Hex?) { return ip.join(''); }
-_IPv6Part = part:_IPv6Fragment+ { return part.join(''); }
-_IPv6Fragment = fragment:(Hex? ":") { return fragment.join(''); }
+IPv6 = $(_IPv6Part Hex?)
+_IPv6Part = $_IPv6Fragment+
+_IPv6Fragment = $(Hex? ":")
 
-NginxTimeStamp = "[" timestamp:(NginxDate ":" NginxTime " " NginxTimeZone) "]" { return timestamp.join(""); }
-NginxTimeZone = timezone:("+" Number) { return timezone.join(""); }
-NginxTime = time:(Number ":" Number ":" Number) { return time.join("") }
-NginxDate = date:(Number "/" Character "/" Number) { return date.join("") }
+NginxTimeStamp = "[" timestamp:$(NginxDate ":" NginxTime " " NginxTimeZone) "]" { return timestamp }
+NginxTimeZone = $("+" Number)
+NginxTime = $(Number ":" Number ":" Number)
+NginxDate = $(Number "/" Character "/" Number)
 
-Timestamp = date:Date time:Time { return date.concat(time).join(''); }
+Timestamp = $(date:Date time:Time)
 Date = Number "-" Number "-" Number
 Time = "T" Number ":" Number ":" Number "." Number "Z"
 
 NoValue =  "-"
 Unknown = "unknown"
 
-EncodedHex = encodedHex:("\\x" Hex) { return encodedHex.join(''); }
-TextWithoutSpace = text:[`;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=.\()\-,$~{}<>]+ { return text.join(''); }
-Text = text:[`;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=.\()\-,$~ {}<>]+ { return text.join(''); }
-Word = word:[*0-9a-zA-Z_-]+ { return word.join(''); }
-Hex = hex:[0-9a-fA-F]+ { return hex.join(''); }
-Character = character:[a-zA-Z]+ { return character.join(''); }
-Number = digits:[0-9]+ { return digits.join(''); }
+EncodedHex = $("\\x" Hex)
+TextWithoutDot = $[`;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=\()\-$~ {}<>]+
+TextWithoutSpace = $[`;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=.\()\-,$~{}<>]+
+Text = $[`;a-zA-Z0-9*%#:/\\^@?!+[\]|&_'=.\()\-,$~ {}<>]+
+Word = $[*0-9a-zA-Z_-]+
+Hex = $[0-9a-fA-F]+
+Character = $[a-zA-Z]+
+Number = $[0-9]+
 _ = [ \t\n]*
+
