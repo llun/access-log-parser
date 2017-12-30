@@ -32,7 +32,8 @@ module.exports = function parse(file) {
             JSON.stringify(
               Object.assign({}, parser.parse(decodedLine), {
                 valid: true,
-                raw: decodedLine
+                raw: decodedLine,
+                file
               })
             )
           )
@@ -40,7 +41,8 @@ module.exports = function parse(file) {
           const timestamp = decodedLine.split(' ')[0]
           const output = {
             valid: false,
-            raw: decodedLine
+            raw: decodedLine,
+            file
           }
           console.log(output)
           this.push(JSON.stringify(output))

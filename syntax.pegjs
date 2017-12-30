@@ -1,4 +1,6 @@
-line =
+line = elb / direct
+
+elb =
   ip:ip_list
   balancer:balancer _
   timestamp:timestamp _
@@ -22,14 +24,39 @@ line =
   }
 }
 
-ip_list = forwarder+ / (novalue:novalue _ { return [novalue] })
-forwarder = ip:ip comma? _ { return ip }
+direct =
+  ip:ip _
+  novalue _
+  novalue _
+  timestamp:timestamp _
+  request:request _
+  status:$(digit+) _
+  size:$(digit+) _
+  referrer:$(quote) _
+  useragent:$(quote) _?
+{
+  return {
+    ip,
+    timestamp,
+    request,
+    status,
+    size,
+    referrer,
+    useragent
+  }
+}
+
+ip_list = comma? _?  ip_list:(forwarder+ / (novalue:novalue _ { return [novalue] }))
+{ return ip_list }
+forwarder = ip:(ip / domain) comma? _? { return ip }
 
 balancer = "(" ip:ip ")" { return ip }
 
 ip = ipv6 / ipv4
 ipv4 = $(digit+ dot digit+ dot digit+ dot digit+)
 ipv6 = $(((hex+)? ":")+ (hex+)?)
+
+domain = $(literal / digit / ".")+
 
 hostname = $(text / _)+
 request = http_request / other_request
@@ -50,7 +77,7 @@ http_request = "\"" method:$(literal+) _ path:$(text+) _ version:$(text+) "\""
   }
 }
 
-quote = "\"" quote:$((text / _)+) "\"" { return quote }
+quote = "\"" quote:$((text / _)+)? "\"" { return quote }
 text = $(symbol / digit / literal )
 
 novalue = "-"
@@ -59,7 +86,7 @@ dot = "."
 
 symbol = [\x21\x23-x2F\x3A-\x40\x5B-\x60\x7B-\x7E]
 literal = [a-zA-Z]
-_ = [ \n\t]
+_ = [ \n\t]+
 digit = [0-9]
 hex = digit / [a-fA-F]
 
@@ -106,4 +133,3 @@ september = 'Sep' { return 8 }
 october = 'Oct' { return 9 }
 november = 'Nov' { return 10 }
 december = 'Dec' { return 11 }
-
