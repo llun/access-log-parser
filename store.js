@@ -2,7 +2,7 @@ const _ = require('lodash')
 const elasticsearch = require('elasticsearch')
 
 const client = new elasticsearch.Client({
-  host: 'localhost:9200'
+  host: '172.16.134.132:9200'
 })
 
 let batch = []
@@ -10,7 +10,7 @@ let batch = []
 module.exports = {
   save: function(body) {
     batch.push(body)
-    if (batch.length === 50) {
+    if (batch.length === 100) {
       return new Promise((resolve, reject) => {
         const localBatch = _.flatten(
           batch.map(item => [
