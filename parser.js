@@ -40,12 +40,7 @@ module.exports = function parse(file) {
           const timestamp = decodedLine.split(' ')[0]
           const output = {
             valid: false,
-            raw: decodedLine,
-            file,
-            timestamp: Date.parse(timestamp),
-            time: {
-              t1: timestamp
-            }
+            raw: decodedLine
           }
           console.log(output)
           this.push(JSON.stringify(output))
