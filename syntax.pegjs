@@ -7,13 +7,13 @@ line =
   status:$(digit+) _
   size:$(digit+) _
   referrer:quote _
-  useragent:quote
+  useragent:quote _?
 {
   return {
     ip,
     balancer,
     timestamp,
-    hostname,
+    hostname: hostname.trim(),
     request,
     status,
     size,
@@ -22,25 +22,40 @@ line =
   }
 }
 
-ip_list = forwarder+
+ip_list = forwarder+ / (novalue:novalue _ { return [novalue] })
 forwarder = ip:ip comma? _ { return ip }
 
-balancer = parentheses ip:ip parentheses { return ip }
+balancer = "(" ip:ip ")" { return ip }
 
 ip = ipv6 / ipv4
 ipv4 = $(digit+ dot digit+ dot digit+ dot digit+)
 ipv6 = $(((hex+)? ":")+ (hex+)?)
 
-hostname = hostname:text { return hostname.trim() }
-request = "\"" request:text "\"" { return request }
+hostname = $(text / _)+
+request = http_request / other_request
+other_request = "\"" request:$((text / _)+) "\""
+{
+  return {
+    type: 'other',
+    request
+  }
+}
+http_request = "\"" method:$(literal+) _ path:$(text+) _ version:$(text+) "\""
+{
+  return {
+    type: 'http',
+    method,
+    path,
+    version
+  }
+}
 
-quote = "\"" quote:text "\"" { return quote }
-text = $(symbol / digit / literal / _)+
+quote = "\"" quote:$((text / _)+) "\"" { return quote }
+text = $(symbol / digit / literal )
 
+novalue = "-"
 comma = ","
 dot = "."
-
-parentheses = [()]
 
 symbol = [\x21\x23-x2F\x3A-\x40\x5B-\x60\x7B-\x7E]
 literal = [a-zA-Z]
@@ -91,3 +106,4 @@ september = 'Sep' { return 8 }
 october = 'Oct' { return 9 }
 november = 'Nov' { return 10 }
 december = 'Dec' { return 11 }
+
