@@ -5,6 +5,21 @@ const through2 = require('through2')
 const grammar = fs.readFileSync('./syntax.pegjs', { encoding: 'utf8' })
 const parser = peg.generate(grammar)
 
+const months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+]
+
 module.exports = function parse(file) {
   return fs
     .createReadStream(file, { autoClose: true })
@@ -38,8 +53,20 @@ module.exports = function parse(file) {
             )
           )
         } catch (error) {
-          const timestamp = decodedLine.split(' ')[0]
+          const matches = decodedLine.match(
+            /(\[(\d{0,2})\/(\w+)\/(\d{4}):(\d+):(\d+):(\d+) \+(\d{4})\])/
+          )
+          const [, , day, month, year, hour, minute, second] = matches
+          const time = new Date(
+            parseInt(year, 10),
+            months.findIndex(i => i === month),
+            parseInt(day, 10),
+            parseInt(hour, 10),
+            parseInt(minute, 10),
+            parseInt(second, 10)
+          )
           const output = {
+            timestamp: time.toISOString(),
             valid: false,
             raw: decodedLine,
             file
