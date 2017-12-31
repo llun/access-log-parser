@@ -2,7 +2,7 @@ const fs = require('fs')
 const path = require('path')
 
 const RECORD_NAME_LENGTH = 10
-const MAX_RECORDS_PER_FILE = 40000
+const MAX_RECORDS_PER_FILE = 100000
 const ROOT_OUT_DIR = 'results'
 
 try {
